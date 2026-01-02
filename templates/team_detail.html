@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ team.team_name }} – Équipe{% endblock %}
+
+{% block content %}
+  <h2>{{ team.team_name }}</h2>
+
+  <div class="card">
+    <table>
+      <tbody>
+        <tr>
+          <th style="width:200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">ID</th>
+          <td>{{ team.team_id }}</td>
+        </tr>
+        <tr>
+          <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">Type</th>
+          <td>
+            <span style="background: {% if team.type == 'club' %}#667eea{% else %}#764ba2{% endif %}; color: #fff; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; font-size: 0.85rem;">
+              {{ team.type }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Joueurs</h3>
+
+  {% if players %}
+    <div class="card">
+      <ul>
+        {% for p in players %}
+          <li>
+            <a href="{{ url_for('player_detail', player_id=p.player_id) }}">
+              {{ p.full_name }}
+            </a>
+            {% if p.height_cm %} <span style="color: #999;">— {{ p.height_cm }} cm</span>{% endif %}
+            {% if p.country %} <span style="color: #999;">— {{ p.country.name }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% else %}
+    <div class="empty-message">
+      <p style="color: #666; text-shadow: none;">Aucun joueur associé.</p>
+    </div>
+  {% endif %}
+
+  <a href="{{ url_for('list_teams') }}" class="btn">⟵ Retour aux équipes</a>
+{% endblock %}

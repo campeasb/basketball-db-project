@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Joueurs – Basketball DB{% endblock %}
+
+{% block content %}
+    <h2>Joueurs</h2>
+
+    {% if players %}
+        <div class="card">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Taille</th>
+                    <th>Pays</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for p in players %}
+                    <tr>
+                        <td>{{ p.player_id }}</td>
+                        <td>
+                            <a href="{{ url_for('player_detail', player_id=p.player_id) }}">
+                                {{ p.full_name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if p.height_cm %}
+                                {{ p.height_cm }} cm
+                            {% else %}
+                                –
+                            {% endif %}
+                        </td>
+                        <td>{{ p.country.name if p.country else "N/A" }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-message">
+            <p style="color: #666; text-shadow: none;">Aucun joueur dans la base.</p>
+        </div>
+    {% endif %}
+
+    <a href="{{ url_for('index') }}" class="btn">⟵ Retour à l'accueil</a>
+{% endblock %}

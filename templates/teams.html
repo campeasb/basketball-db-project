@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Équipes – Basketball DB{% endblock %}
+
+{% block content %}
+    <h2>Équipes</h2>
+
+    <h3>Clubs</h3>
+    {% if clubs %}
+        <div class="card">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for t in clubs %}
+                    <tr>
+                        <td>{{ t.team_id }}</td>
+                        <td>
+                            <a href="{{ url_for('team_detail', team_id=t.team_id) }}">
+                                {{ t.team_name }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-message">
+            <p style="color: #666; text-shadow: none;">Aucun club.</p>
+        </div>
+    {% endif %}
+
+    <h3>Équipes nationales</h3>
+    {% if nationals %}
+        <div class="card">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for t in nationals %}
+                    <tr>
+                        <td>{{ t.team_id }}</td>
+                        <td>
+                            <a href="{{ url_for('team_detail', team_id=t.team_id) }}">
+                                {{ t.team_name }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-message">
+            <p style="color: #666; text-shadow: none;">Aucune équipe nationale.</p>
+        </div>
+    {% endif %}
+{% endblock %}

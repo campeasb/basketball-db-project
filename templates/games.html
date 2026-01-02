@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Matchs – Basketball DB{% endblock %}
+
+{% block content %}
+  <h2>Matchs</h2>
+
+  {% if games %}
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Lieu</th>
+            <th>Affiche</th>
+            <th>Score</th>
+            <th>Finale</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in games %}
+            {% set home = g._home %}
+            {% set away = g._away %}
+
+            <tr>
+              <td>{{ g.date_time or "–" }}</td>
+              <td>{{ g.competition_type }}</td>
+              <td>{{ g.location or "–" }}</td>
+
+              <td>
+                {% if home and away %}
+                  <a href="{{ url_for('team_detail', team_id=home.team.team_id) }}">
+                      {{ home.team.team_name }}
+                  </a>
+                  <strong style="color: #667eea; margin: 0 0.5rem;">vs</strong>
+                  <a href="{{ url_for('team_detail', team_id=away.team.team_id) }}">
+                      {{ away.team.team_name }}
+                  </a>
+                {% else %}
+                  <span style="color: #999;">Participants incomplets</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if home and away %}
+                  <strong style="color: #667eea;">{{ home.score if home.score is not none else "–" }}</strong>
+                  <span style="margin: 0 0.5rem;">-</span>
+                  <strong style="color: #764ba2;">{{ away.score if away.score is not none else "–" }}</strong>
+                {% else %}
+                  –
+                {% endif %}
+              </td>
+
+              <td>
+                {% if g.is_final == 1 %}
+                  <span style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #333; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; font-size: 0.85rem;">🏆 Finale</span>
+                {% else %}
+                  Non
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-message">
+      <p style="color: #666; text-shadow: none;">Aucun match dans la base.</p>
+    </div>
+  {% endif %}
+{% endblock %}

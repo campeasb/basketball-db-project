@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ player.full_name }} – Joueur{% endblock %}
+
+{% block content %}
+    <h2>{{ player.full_name }}</h2>
+
+    <div class="card">
+        <table>
+            <tbody>
+            <tr>
+                <th style="width: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">ID</th>
+                <td>{{ player.player_id }}</td>
+            </tr>
+            <tr>
+                <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">Date de naissance</th>
+                <td>{{ player.date_of_birth or "–" }}</td>
+            </tr>
+            <tr>
+                <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">Taille</th>
+                <td>
+                    {% if player.height_cm %}
+                        <strong style="color: #667eea;">{{ player.height_cm }} cm</strong>
+                    {% else %}
+                        –
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">Pays</th>
+                <td>{{ player.country.name if player.country else "N/A" }}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <a href="{{ url_for('list_players') }}" class="btn">⟵ Retour à la liste des joueurs</a>
+{% endblock %}

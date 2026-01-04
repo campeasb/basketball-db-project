@@ -1,5 +1,6 @@
 from flask import Flask, render_template, abort
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 import os
 
 app = Flask(__name__)
@@ -198,5 +199,143 @@ def team_detail(team_id):
         )
 
     return render_template("team_detail.html", team=team, players=players)
+
+@app.route("/stats")
+def stats():
+    # 1) Top 10 joueurs (Points totaux en équipe nationale)
+    # Formule : points = ft_made + 2*fg2_made + 3*fg3_made
+    query_1 = text("""
+        SELECT p.full_name, t.team_name,
+               SUM(pgs.ft_made + 2*pgs.fg2_made + 3*pgs.fg3_made) as total_points
+        FROM Player p
+        JOIN PlayerGameStats pgs ON p.player_id = pgs.player_id
+        JOIN GameParticipant gp ON pgs.game_id = gp.game_id
+        JOIN Team t ON gp.team_id = t.team_id
+        WHERE t.type = 'national' AND pgs.player_id IN (
+            SELECT ns.player_id FROM NationalSelection ns WHERE ns.team_id = t.team_id
+        )
+        GROUP BY p.player_id
+        ORDER BY total_points DESC
+        LIMIT 10
+    """)
+    res_1 = db.session.execute(query_1).fetchall()
+
+    # 2) Top 3 joueurs (% Lancer Francs - Finale Euro 2002)
+    # On cherche l'edition_id pour l'Euro 2002 (supposons id=1 selon votre seed)
+    query_2 = text("""
+        SELECT p.full_name, 
+               (CAST(pgs.ft_made AS FLOAT) / pgs.ft_att) * 100 as ft_percent
+        FROM Player p
+        JOIN PlayerGameStats pgs ON p.player_id = pgs.player_id
+        JOIN Game g ON pgs.game_id = g.game_id
+        JOIN ChampionshipEdition ce ON g.edition_id = ce.edition_id
+        WHERE ce.championship_id = 1 
+          AND ce.year = 2002 
+          AND g.stage = 'Final'
+          AND pgs.ft_att > 0
+        ORDER BY ft_percent DESC
+        LIMIT 3
+    """)
+    res_2 = db.session.execute(query_2).fetchall()
+
+    # 3) Club avec la plus grande moyenne de taille
+    query_3 = text("""
+        SELECT t.team_name, AVG(p.height_cm) as avg_height
+        FROM Team t
+        JOIN PlayerClubContract pcc ON t.team_id = pcc.team_id
+        JOIN Player p ON pcc.player_id = p.player_id
+        WHERE t.type = 'club'
+        GROUP BY t.team_id
+        ORDER BY avg_height DESC
+        LIMIT 1
+    """)
+    res_3 = db.session.execute(query_3).fetchone()
+
+    # 4) Sponsor ayant sponsorisé le plus d'équipes nationales championnes du monde
+    # championship_id = 2 (World Champ), is_final = 1
+    # On doit trouver qui a gagné chaque finale
+    query_4 = text("""
+        SELECT s.name, COUNT(DISTINCT ce.year) as titles_count
+        FROM Sponsor s
+        JOIN Sponsorship sp ON s.sponsor_id = sp.sponsor_id
+        JOIN Team t ON sp.team_id = t.team_id
+        JOIN GameParticipant gp ON t.team_id = gp.team_id
+        JOIN Game g ON gp.game_id = g.game_id
+        JOIN ChampionshipEdition ce ON g.edition_id = ce.edition_id
+        WHERE ce.championship_id = 2  -- World Championship
+          AND g.is_final = 1
+          -- L'équipe doit avoir gagné (score max du match)
+          AND gp.score = (SELECT MAX(score) FROM GameParticipant WHERE game_id = g.game_id)
+        GROUP BY s.sponsor_id
+        ORDER BY titles_count DESC
+        LIMIT 1
+    """)
+    res_4 = db.session.execute(query_4).fetchone()
+
+    # 5) Pour chaque club, le joueur avec le meilleur % à 3pts (Saison courante)
+    # C'est complexe en une seule requête SQL simple. 
+    # On va récupérer les stats agrégées et filtrer en Python pour simplifier.
+    query_5 = text("""
+        SELECT t.team_name, p.full_name,
+               SUM(pgs.fg3_made) as made, SUM(pgs.fg3_att) as att
+        FROM PlayerGameStats pgs
+        JOIN Game g ON pgs.game_id = g.game_id
+        JOIN GameParticipant gp ON g.game_id = gp.game_id 
+             AND gp.team_id IN (SELECT team_id FROM PlayerClubContract WHERE player_id = pgs.player_id)
+        JOIN Team t ON gp.team_id = t.team_id
+        JOIN Player p ON pgs.player_id = p.player_id
+        WHERE g.competition_type = 'league' 
+          AND g.league_season_id_season = 1 -- Saison courante id=1
+          AND t.type = 'club'
+        GROUP BY t.team_id, p.player_id
+        HAVING att > 0
+    """)
+    raw_5 = db.session.execute(query_5).fetchall()
+    
+    # Traitement Python pour trouver le max par club
+    clubs_best_3p = {}
+    for row in raw_5:
+        pct = (row.made / row.att) * 100
+        team = row.team_name
+        if team not in clubs_best_3p or pct > clubs_best_3p[team]['pct']:
+            clubs_best_3p[team] = {'player': row.full_name, 'pct': pct}
+
+    # 6) Pour un club particulier (ex: Real Madrid, ID=4), joueur avec le plus d'Assists/Match
+    # Vous pouvez changer l'ID ici ou le passer en paramètre d'URL
+    target_club_id = 4 
+    query_6 = text("""
+        SELECT p.full_name, AVG(pgs.assists) as avg_assists
+        FROM PlayerGameStats pgs
+        JOIN Game g ON pgs.game_id = g.game_id
+        JOIN GameParticipant gp ON g.game_id = gp.game_id
+        JOIN Player p ON pgs.player_id = p.player_id
+        WHERE gp.team_id = :club_id
+        GROUP BY p.player_id
+        ORDER BY avg_assists DESC
+        LIMIT 1
+    """)
+    res_6 = db.session.execute(query_6, {'club_id': target_club_id}).fetchone()
+
+    # 7) Clubs ayant gagné l'Euroleague (> 3 fois)
+    # championship_id = 3 (selon seed_extended), is_final = 1
+    query_7 = text("""
+        SELECT t.team_name, COUNT(ce.year) as wins
+        FROM Team t
+        JOIN GameParticipant gp ON t.team_id = gp.team_id
+        JOIN Game g ON gp.game_id = g.game_id
+        JOIN ChampionshipEdition ce ON g.edition_id = ce.edition_id
+        WHERE ce.championship_id = 3
+          AND g.is_final = 1
+          AND gp.score = (SELECT MAX(score) FROM GameParticipant WHERE game_id = g.game_id)
+        GROUP BY t.team_id
+        HAVING wins > 3
+    """)
+    res_7 = db.session.execute(query_7).fetchall()
+
+    return render_template("stats.html", 
+                           res_1=res_1, res_2=res_2, res_3=res_3, 
+                           res_4=res_4, res_5=clubs_best_3p, 
+                           res_6=res_6, res_7=res_7)
+
 if __name__ == "__main__":
     app.run(debug=True)

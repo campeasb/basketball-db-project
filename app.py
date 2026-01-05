@@ -221,7 +221,6 @@ def stats():
     res_1 = db.session.execute(query_1).fetchall()
 
     # 2) Top 3 joueurs (% Lancer Francs - Finale Euro 2002)
-    # On cherche l'edition_id pour l'Euro 2002 (supposons id=1 selon votre seed)
     query_2 = text("""
         SELECT p.full_name, 
                (CAST(pgs.ft_made AS FLOAT) / pgs.ft_att) * 100 as ft_percent

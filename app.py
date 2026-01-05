@@ -160,7 +160,7 @@ def list_teams():
 def list_games():
     games = Game.query.order_by(Game.date_time.desc()).all()
 
-    # On attache "home" et "away" à chaque game (simple pour le template)
+    # On attache "home" et "away" à chaque game
     for g in games:
         home = None
         away = None
@@ -203,7 +203,7 @@ def team_detail(team_id):
 @app.route("/stats")
 def stats():
     # 1) Top 10 joueurs (Points totaux en équipe nationale)
-    # Formule : points = ft_made + 2*fg2_made + 3*fg3_made
+    # Points = ft_made + 2*fg2_made + 3*fg3_made
     query_1 = text("""
         SELECT p.full_name, t.team_name,
                SUM(pgs.ft_made + 2*pgs.fg2_made + 3*pgs.fg3_made) as total_points
@@ -252,7 +252,6 @@ def stats():
 
     # 4) Sponsor ayant sponsorisé le plus d'équipes nationales championnes du monde
     # championship_id = 2 (World Champ), is_final = 1
-    # On doit trouver qui a gagné chaque finale
     query_4 = text("""
         SELECT s.name, COUNT(DISTINCT ce.year) as titles_count
         FROM Sponsor s
@@ -272,35 +271,47 @@ def stats():
     res_4 = db.session.execute(query_4).fetchone()
 
     # 5) Pour chaque club, le joueur avec le meilleur % à 3pts (Saison courante)
-    # C'est complexe en une seule requête SQL simple. 
-    # On va récupérer les stats agrégées et filtrer en Python pour simplifier.
     query_5 = text("""
-        SELECT t.team_name, p.full_name,
-               SUM(pgs.fg3_made) as made, SUM(pgs.fg3_att) as att
-        FROM PlayerGameStats pgs
-        JOIN Game g ON pgs.game_id = g.game_id
-        JOIN GameParticipant gp ON g.game_id = gp.game_id 
-             AND gp.team_id IN (SELECT team_id FROM PlayerClubContract WHERE player_id = pgs.player_id)
-        JOIN Team t ON gp.team_id = t.team_id
-        JOIN Player p ON pgs.player_id = p.player_id
-        WHERE g.competition_type = 'league' 
-          AND g.league_season_id_season = 1 -- Saison courante id=1
-          AND t.type = 'club'
-        GROUP BY t.team_id, p.player_id
-        HAVING att > 0
-    """)
-    raw_5 = db.session.execute(query_5).fetchall()
-    
-    # Traitement Python pour trouver le max par club
+        WITH PlayerStats AS (
+    SELECT 
+        t.team_name, 
+        p.full_name,
+        SUM(pgs.fg3_made) as total_made,
+        SUM(pgs.fg3_att) as total_att,
+        (CAST(SUM(pgs.fg3_made) AS FLOAT) / SUM(pgs.fg3_att)) * 100 as pct
+    FROM PlayerGameStats pgs
+    JOIN Game g ON pgs.game_id = g.game_id
+    JOIN GameParticipant gp ON g.game_id = gp.game_id
+    JOIN Team t ON gp.team_id = t.team_id
+    JOIN Player p ON pgs.player_id = p.player_id
+    WHERE g.competition_type = 'league' 
+      AND g.league_season_id_season = 1
+      AND t.type = 'club'
+      -- Vérifie que le joueur est bien lié au club (via contrat ou logique de match)
+      AND gp.team_id IN (
+          SELECT team_id FROM PlayerClubContract WHERE player_id = pgs.player_id
+      )
+    GROUP BY t.team_id, p.player_id
+    HAVING total_att > 0
+    ),
+    RankedStats AS (
+        SELECT 
+            team_name, 
+            full_name, 
+            pct,
+            RANK() OVER (PARTITION BY team_name ORDER BY pct DESC) as rnk
+        FROM PlayerStats
+    )
+    SELECT team_name, full_name, pct
+    FROM RankedStats
+    WHERE rnk = 1""")
+    res_5 = db.session.execute(query_5).fetchall()
+    # Transformation en dictionnaire pour correspondre à ce qu'attend stats.html
     clubs_best_3p = {}
-    for row in raw_5:
-        pct = (row.made / row.att) * 100
-        team = row.team_name
-        if team not in clubs_best_3p or pct > clubs_best_3p[team]['pct']:
-            clubs_best_3p[team] = {'player': row.full_name, 'pct': pct}
-
+    for row in res_5:
+        clubs_best_3p[row[0]] = {'player': row[1], 'pct': row[2]}
+    
     # 6) Pour un club particulier (ex: Real Madrid, ID=4), joueur avec le plus d'Assists/Match
-    # Vous pouvez changer l'ID ici ou le passer en paramètre d'URL
     target_club_id = 4 
     query_6 = text("""
         SELECT p.full_name, AVG(pgs.assists) as avg_assists

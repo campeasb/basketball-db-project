@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques – Basketball DB{% endblock %}
+
+{% block content %}
+  <h2>Statistiques Avancées</h2>
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">1. Top 10 Meilleurs Marqueurs (Sélections Nationales)</h3>
+  {% if res_1 %}
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Joueur</th>
+            <th>Équipe</th>
+            <th>Points Totaux</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in res_1 %}
+            <tr>
+              <td>#{{ loop.index }}</td>
+              <td>
+                {{ row.full_name }}
+              </td>
+              <td>{{ row.team_name }}</td>
+              <td>
+                <strong style="color: #667eea;">{{ row.total_points }}</strong> pts
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-message">
+      <p style="color: #666; text-shadow: none;">Aucune donnée disponible.</p>
+    </div>
+  {% endif %}
+
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">2. Top 3 % Lancer-Francs (Finale Euro 2002)</h3>
+  {% if res_2 %}
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Joueur</th>
+            <th>Pourcentage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in res_2 %}
+            <tr>
+              <td>
+                {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}
+              </td>
+              <td>{{ row.full_name }}</td>
+              <td>
+                <span style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #333; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; font-size: 0.85rem;">
+                  {{ "%.1f"|format(row.ft_percent) }} %
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-message">
+      <p style="color: #666; text-shadow: none;">Aucune donnée pour cette finale.</p>
+    </div>
+  {% endif %}
+
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">3. Club avec la plus grande taille moyenne</h3>
+  <div class="card" style="padding: 1.5rem;">
+    {% if res_3 %}
+      <p style="font-size: 1.1rem; margin: 0;">
+        Le club le plus grand est <strong style="color: #764ba2;">{{ res_3.team_name }}</strong> avec une moyenne de 
+        <span style="background: #eee; padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: bold;">
+          {{ "%.1f"|format(res_3.avg_height) }} cm
+        </span>.
+      </p>
+    {% else %}
+      <p style="color: #666;">Pas de données disponibles.</p>
+    {% endif %}
+  </div>
+
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">4. Meilleur Sponsor (Champions du Monde)</h3>
+  <div class="card" style="padding: 1.5rem;">
+    {% if res_4 %}
+      <p style="font-size: 1.1rem; margin: 0;">
+        Le sponsor <strong style="color: #667eea;">{{ res_4.name }}</strong> domine avec 
+        <span style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #333; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600;">
+          {{ res_4.titles_count }} titres
+        </span> mondiaux.
+      </p>
+    {% else %}
+      <p style="color: #666;">Pas de données suffisantes.</p>
+    {% endif %}
+  </div>
+
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">5. Meilleur tireur à 3pts par club (Saison actuelle)</h3>
+  {% if res_5 %}
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Club</th>
+            <th>Joueur</th>
+            <th>Réussite (3pts)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for team, data in res_5.items() %}
+            <tr>
+              <td><strong>{{ team }}</strong></td>
+              <td>{{ data.player }}</td>
+              <td>
+                <strong style="color: #764ba2;">{{ "%.1f"|format(data.pct) }} %</strong>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-message">
+      <p style="color: #666; text-shadow: none;">Aucun tir enregistré cette saison.</p>
+    </div>
+  {% endif %}
+
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">6. Meilleur passeur (Real Madrid)</h3>
+  <div class="card" style="padding: 1.5rem;">
+    {% if res_6 %}
+      <p style="font-size: 1.1rem; margin: 0;">
+        Le maître à jouer est <strong style="color: #333;">{{ res_6.full_name }}</strong> avec 
+        <strong style="color: #667eea; font-size: 1.2rem;">{{ "%.1f"|format(res_6.avg_assists) }}</strong> passes / match.
+      </p>
+    {% else %}
+      <p style="color: #666;">Pas de données pour ce club.</p>
+    {% endif %}
+  </div>
+
+
+  <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #444;">7. Clubs de Légende (> 3 Euroleagues)</h3>
+  {% if res_7 %}
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Club</th>
+            <th>Trophées</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in res_7 %}
+            <tr>
+              <td>{{ row.team_name }}</td>
+              <td>
+                <span style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #333; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; font-size: 0.85rem;">
+                  🏆 {{ row.wins }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-message">
+      <p style="color: #666; text-shadow: none;">Aucun club n'a atteint ce palier dans la base.</p>
+    </div>
+  {% endif %}
+
+{% endblock %}

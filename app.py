@@ -299,13 +299,17 @@ def stats():
             team_name, 
             full_name, 
             pct,
-            RANK() OVER (PARTITION BY team_name ORDER BY pct DESC) as rank
+            RANK() OVER (PARTITION BY team_name ORDER BY pct DESC) as rnk
         FROM PlayerStats
     )
     SELECT team_name, full_name, pct
     FROM RankedStats
-    WHERE rank = 1""")
+    WHERE rnk = 1""")
     res_5 = db.session.execute(query_5).fetchall()
+    # Transformation en dictionnaire pour correspondre à ce qu'attend stats.html
+    clubs_best_3p = {}
+    for row in res_5:
+        clubs_best_3p[row[0]] = {'player': row[1], 'pct': row[2]}
     
     # 6) Pour un club particulier (ex: Real Madrid, ID=4), joueur avec le plus d'Assists/Match
     target_club_id = 4 
@@ -340,7 +344,7 @@ def stats():
 
     return render_template("stats.html", 
                            res_1=res_1, res_2=res_2, res_3=res_3, 
-                           res_4=res_4, res_5=res_5, 
+                           res_4=res_4, res_5=clubs_best_3p, 
                            res_6=res_6, res_7=res_7)
 
 if __name__ == "__main__":
